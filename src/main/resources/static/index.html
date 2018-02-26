@@ -1,0 +1,102 @@
+<html lang="en">
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <link rel="apple-touch-icon" href="favicon.ico"/>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="./js/vizceral.js"></script>
+    <script>
+      var viz;
+      var neuron;
+      var lastData;
+      function run () {
+          neuron = new WebSocket("ws://"+ window.location.href.replace("http://","").replace("/","") +"/metrics");
+          viz = new Vizceral.default(document.getElementById('vizceral'));
+        viz.updateStyles({
+            colorText: 'rgb(214, 214, 214)',
+            colorTextDisabled: 'rgb(129, 129, 129)',
+            colorTraffic: {
+                normal: 'rgb(186, 213, 237)',
+                normalDonut: 'rgb(91, 91, 91)',
+                warning: 'rgb(268, 185, 73)',
+                danger: 'rgb(184, 36, 36)',
+            },
+            colorNormalDimmed: 'rgb(101, 117, 128)',
+            colorBackgroundDark: 'rgb(100, 35, 35)',
+            colorLabelBorder: 'rgb(16, 17, 18)',
+            colorLabelText: 'rgb(0, 0, 0)',
+            colorDonutInternalColor: 'rgb(35, 35, 35)',
+            colorDonutInternalColorHighlighted: 'rgb(255, 255, 255)',
+            colorConnectionLine: 'rgb(91, 91, 91)',
+            colorPageBackground: 'rgb(45, 45, 45)',
+            colorPageBackgroundTransparent: 'rgba(45, 45, 45, 0)',
+            colorBorderLines: 'rgb(137, 137, 137)',
+            colorArcBackground: 'rgb(60, 60, 60)'
+        });
+          viz.on('viewChanged', function (data) {
+              console.log(data);
+              var list = document.getElementById('navigationCrumbs');
+              if(data.graph.name !== 'edge')
+                list.innerHTML += "<li class=\"breadcrumb-item\" onclick=\"viz.setView([\'"+ data.graph.name + "\'])\" aria-current=\"page\">"+ data.graph.name + "</li>"
+              else{
+                  list.innerHTML = "<li class=\"breadcrumb-item\"><a onclick=\"viz.setView()\">Env</a></li>"
+              }
+          })
+          viz.on('objectHighlighted', function (data) {
+              console.log(data);
+              var debug = document.getElementById('debug');
+              if (data !== undefined && data.name !== undefined) {
+                  debug.innerHTML += "<p>" + data.name + "</p>"
+                  if(data.notices !== undefined){
+                      for (dt in data.notices) {
+                          if(data.notices[dt]['exceptionMessage'] !== "null")
+                            debug.innerHTML += "<p>" + JSON.stringify(data.notices[dt]['exceptionMessage']) + "</p>"
+                      }
+                  }
+              }else{
+                  debug.innerHTML= ""
+              }
+
+          })
+          neuron.onmessage = function(event){
+              console.log(event);
+              lastData = JSON.parse(event.data)
+              console.log(lastData.nodes[0].connections);
+              viz.updateData(lastData)
+          }
+        viz.setView();
+        viz.animate();
+      }
+    </script>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <title>NEURON</title>
+  </head>
+  <body onload='run()'>
+    <nav class="navbar navbar-dark bg-dark">
+      <!-- Navbar content -->
+      <a class="navbar-brand" href="#">
+        <img src="/favicon.ico" width="30" height="30" class="d-inline-block align-top" alt="">
+        Neuron
+      </a>
+      <!-- End Navbar content -->
+    </nav>
+    <nav aria-label="breadcrumb">
+      <!-- Nav Breadcrumb content -->
+      <ol id="navigationCrumbs" class="breadcrumb">
+        <li class="breadcrumb-item"><a onclick="viz.setView()">Env</a></li>
+
+      </ol>
+      <!-- End Nav Breadcrumb content -->
+    </nav>
+    <canvas id='vizceral'>
+      <div class="vizceral-notice" id="vizceral-notice"></div>
+    </canvas>
+  <div id="debug" style="position: absolute; bottom: 10px;"></div>
+  </body>
+</html>
